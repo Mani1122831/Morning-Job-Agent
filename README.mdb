@@ -1,0 +1,213 @@
+<div align="center">
+
+<img src="assets/logo.png" alt="Morning Job Agent logo" width="120" />
+
+# 🌅 Morning Job Agent
+
+**An autonomous AI agent that finds AI Engineer jobs, filters them intelligently,
+summarizes them with Gemini, and hands you a ready-to-read morning briefing.**
+
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-1C3C3C)](https://www.langchain.com/langgraph)
+[![Gemini](https://img.shields.io/badge/AI-Google%20Gemini-8E75B2?logo=google&logoColor=white)](https://ai.google.dev/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](#license)
+[![Tests](https://img.shields.io/badge/tests-pytest-0A9EDC?logo=pytest&logoColor=white)](tests/)
+
+<img alt="hero banner placeholder" src="https://placehold.co/1200x360/4338ca/ffffff?text=Morning+Job+Agent" width="100%" />
+
+</div>
+
+---
+
+## ✨ What it does
+
+Every morning (or on demand), **Morning Job Agent**:
+
+1. 🔎 **Searches** the RemoteOK job board for fresh postings.
+2. 🧠 **Filters** them with a rules-based Smart Filter Agent (AI Engineer, ML,
+   GenAI, Python, LangChain, RAG, Remote / Hyderabad / Bengaluru).
+3. ✍️ **Summarizes** each match with **Google Gemini** — required skills,
+   technologies, experience level, a 2-sentence summary, and interview tips.
+4. 💾 **Saves** results to `data/jobs.csv`, safely de-duplicated across runs.
+5. 📊 **Displays** everything in a premium, dark glassmorphism Streamlit dashboard.
+6. 📧 Optionally **emails** you a digest, and can run on a **daily/hourly schedule**.
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart LR
+    subgraph LangGraph Workflow
+        A[Search Agent<br/>RemoteOK] --> B[Filter Agent<br/>keywords + location]
+        B --> C[Gemini Summarizer Agent]
+        C --> D[Save to CSV<br/>de-duplicated]
+    end
+    D --> E[Streamlit Dashboard]
+    F[APScheduler] -.triggers.-> A
+    D -.optional.-> G[Email Digest]
+```
+
+The Streamlit UI is **not** a graph node — it's a pure read of `data/jobs.csv`,
+rendered after the workflow completes. This keeps the agent pipeline testable
+and reusable outside of the UI (e.g. from the scheduler or a CLI cron job).
+
+---
+
+## 📁 Folder structure
+
+```
+Morning-Job-Agent/
+├── app.py                     # Streamlit dashboard (entry point)
+├── config.py                  # Centralized environment configuration
+├── requirements.txt
+├── README.md
+├── .env.example
+├── .gitignore
+├── agents/
+│   ├── __init__.py
+│   ├── job_agent.py           # Job Search Agent (RemoteOK, extensible)
+│   ├── summarizer_agent.py    # Gemini Summarizer Agent
+│   ├── filter_agent.py        # Smart Filter Agent
+│   └── workflow.py            # LangGraph pipeline + CSV storage
+├── services/
+│   ├── __init__.py
+│   ├── remoteok.py            # RemoteOK API client
+│   ├── email_service.py       # SMTP email digest
+│   └── scheduler.py           # APScheduler daily/hourly/manual runner
+├── models/
+│   ├── __init__.py
+│   └── schemas.py             # Pydantic v2 models
+├── utils/
+│   ├── __init__.py
+│   ├── logger.py              # Structured logging (no print statements)
+│   └── helpers.py             # HTML cleaning, hashing, keyword matching
+├── data/
+│   └── jobs.csv                # Persisted job store (created on first run)
+├── assets/
+│   └── logo.png
+└── tests/
+    └── test_scraper.py
+```
+
+---
+
+## 🚀 Installation
+
+```bash
+git clone https://github.com/your-username/Morning-Job-Agent.git
+cd Morning-Job-Agent
+
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+pip install -r requirements.txt
+
+cp .env.example .env             # then fill in the values you want to use
+
+streamlit run app.py
+```
+
+The app works **out of the box with zero configuration** — without a Gemini key
+it uses a deterministic fallback summarizer, and without SMTP credentials the
+email digest button simply explains that email is disabled.
+
+---
+
+## 🔑 Environment variables
+
+| Variable | Required | Description |
+|---|---|---|
+| `GEMINI_API_KEY` | No | Enables real AI summaries. Without it, fallback summaries are used. |
+| `GEMINI_MODEL` | No | Defaults to `gemini-1.5-flash`. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | No | Enables the email digest feature. |
+| `SMTP_USE_TLS` | No | Defaults to `true`. |
+| `EMAIL_RECIPIENT` | No | Who receives the digest. |
+| `REMOTEOK_URL` | No | Defaults to the public RemoteOK API. |
+| `REQUEST_TIMEOUT_SECONDS` | No | HTTP timeout for job fetching. Defaults to `15`. |
+| `MAX_JOBS_PER_RUN` | No | Cap on jobs fetched per run. Defaults to `40`. |
+| `SCHEDULER_HOUR`, `SCHEDULER_MINUTE` | No | Daily run time. Defaults to `8:00`. |
+| `LOG_LEVEL` | No | Defaults to `INFO`. |
+
+See [`.env.example`](.env.example) for a ready-to-copy template.
+
+---
+
+## 🖼️ Screenshots
+
+> _Add real screenshots here once deployed — placeholders below._
+
+| Dashboard | Job Card | Sidebar Filters |
+|---|---|---|
+| ![dashboard](https://placehold.co/380x240/1b1035/ffffff?text=Dashboard) | ![card](https://placehold.co/380x240/2563eb/ffffff?text=Job+Card) | ![filters](https://placehold.co/380x240/6d28d9/ffffff?text=Filters) |
+
+---
+
+## 🧪 Testing
+
+```bash
+pytest tests/ -v
+```
+
+`tests/test_scraper.py` verifies that the scraper returns a list, that
+normalized jobs contain all required fields, and that network failures
+(timeouts, connection errors, malformed JSON, unexpected payload shapes)
+are handled gracefully instead of raising.
+
+---
+
+## ☁️ Deployment
+
+This repository deploys unmodified on any of the following:
+
+### Streamlit Community Cloud
+1. Push this repo to GitHub.
+2. Go to [share.streamlit.io](https://share.streamlit.io), point it at `app.py`.
+3. Add your environment variables under **Settings → Secrets**.
+
+### Render
+1. Create a new **Web Service** from this repo.
+2. Build command: `pip install -r requirements.txt`
+3. Start command: `streamlit run app.py --server.port $PORT --server.address 0.0.0.0`
+
+### Railway
+1. Create a new project from this repo.
+2. Railway auto-detects Python; set the start command to:
+   `streamlit run app.py --server.port $PORT --server.address 0.0.0.0`
+3. Add environment variables in the Railway dashboard.
+
+No code changes are required for any of the three platforms.
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Add LinkedIn, Indeed, and Naukri as additional job sources
+- [ ] ChromaDB-backed semantic search across saved jobs
+- [ ] Resume-to-job matching score using Gemini embeddings
+- [ ] Slack/Discord digest alongside email
+- [ ] One-click "tailor my resume for this job" generator
+
+---
+
+## 🛡️ Error handling philosophy
+
+Every external call (RemoteOK, Gemini, SMTP) is wrapped so that a single
+failure degrades a feature instead of crashing the app:
+
+- **Invalid/missing Gemini key** → fallback rule-based summaries.
+- **Network failure / timeout** → empty job list + a friendly UI message.
+- **Gemini quota exceeded** → logged, falls back per-job.
+- **Malformed API response** → offending entries are skipped, not fatal.
+- **SMTP not configured** → digest button explains why, doesn't crash.
+
+---
+
+## 📄 License
+
+MIT — see [LICENSE](LICENSE) for details.
+
+<div align="center">
+Built with ❤️ for AI Engineers who'd rather sip coffee than scroll job boards.
+</div>

@@ -1,0 +1,7 @@
+.env
+venv/
+.venv/
+database/*.db
+data/*.csv
+uploads/resumes/
+logs/

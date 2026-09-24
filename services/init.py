@@ -1,0 +1,1 @@
+"""External integrations: job board APIs, email, and scheduling."""
